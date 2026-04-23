@@ -85,7 +85,9 @@ function loadFromUrlParams() {
     var params = new URLSearchParams(window.location.search);
     var dataStr = params.get("data");
     if (dataStr) {
-      var jsonStr = atob(dataStr);
+      // 先URL解码（小程序用encodeURIComponent编码）
+      var decoded = decodeURIComponent(dataStr);
+      var jsonStr = atob(decoded);
       var parsed = JSON.parse(jsonStr);
       if (Array.isArray(parsed) && parsed.length > 0) {
         records = parsed;
