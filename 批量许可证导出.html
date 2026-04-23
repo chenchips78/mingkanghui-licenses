@@ -12,9 +12,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .title-bar p { font-size: 13px; color: #aaa; }
 .top-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; width: 100%; max-width: 520px; flex-wrap: wrap; }
 .top-bar input[type="file"] { display: none; }
-.top-bar .csv-btn, .top-bar .manual-btn { background: #7c3aed; color: #fff; border: none; padding: 8px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; }
-.top-bar .manual-btn { background: #374151; }
-.top-bar .clipboard-btn { background: #059669; color: #fff; border: none; padding: 8px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; }
+.top-bar .csv-btn { background: #7c3aed; color: #fff; border: none; padding: 8px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; }
 .top-bar .count-badge { background: #7c3aed; color: #fff; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .nav-bar { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px; width: 100%; max-width: 520px; }
 .nav-btn { background: #374151; color: #fff; border: none; width: 48px; height: 48px; border-radius: 50%; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -28,17 +26,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 .btn-save { background: linear-gradient(135deg, #059669, #10b981); color: #fff; }
 .btn-zip { background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; }
 .btn-clear { background: #374151; color: #fff; flex: 0 0 auto; padding: 14px 20px; }
-.manual-form { display: none; width: 100%; max-width: 520px; background: #16213e; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
-.manual-form.show { display: block; }
-.manual-form h3 { font-size: 15px; margin-bottom: 14px; color: #fff; }
-.form-row { display: flex; align-items: center; margin-bottom: 10px; gap: 10px; }
-.form-row label { font-size: 13px; color: #aaa; width: 70px; flex-shrink: 0; }
-.form-row input { flex: 1; background: #1a1a2e; border: 1px solid #374151; border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 14px; outline: none; }
-.form-row input:focus { border-color: #7c3aed; }
-.form-actions { display: flex; gap: 10px; margin-top: 14px; }
-.form-actions button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 600; }
-.btn-add { background: #7c3aed; color: #fff; }
-.btn-cancel { background: #374151; color: #ccc; }
 .progress-bar { display: none; width: 100%; max-width: 520px; margin-top: 12px; }
 .progress-bar.show { display: block; }
 .progress-bar .progress-label { font-size: 12px; color: #aaa; margin-bottom: 6px; text-align: center; }
@@ -59,25 +46,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft
 <div class="top-bar">
   <input type="file" id="csvInput" accept=".csv">
   <button class="csv-btn" onclick="document.getElementById('csvInput').click()">&#128229; 上传 CSV</button>
-  <button class="manual-btn" onclick="toggleManual()">&#9998; 手动录入</button>
-  <button class="clipboard-btn" onclick="pasteFromClipboard()">&#128203; 从剪贴板导入</button>
   <span class="count-badge" id="countBadge">0 条</span>
 </div>
-<div class="manual-form" id="manualForm">
-  <h3>&#9998; 手动录入许可证信息</h3>
-  <div class="form-row"><label>姓名</label><input type="text" id="mName" placeholder="如：张三"></div>
-  <div class="form-row"><label>手机号</label><input type="text" id="mPhone" placeholder="如：13812345678"></div>
-  <div class="form-row"><label>合作方</label><input type="text" id="mPartner" placeholder="如：民生银行"></div>
-  <div class="form-row"><label>活动名称</label><input type="text" id="mActivity" placeholder="如：民生满减周"></div>
-  <div class="form-row"><label>授权门店</label><input type="text" id="mStore" placeholder="如：上城春江花月"></div>
-  <div class="form-row"><label>入驻频次</label><input type="text" id="mFrequency" placeholder="如：每月1次"></div>
-  <div class="form-row"><label>有效期起</label><input type="date" id="mStart"></div>
-  <div class="form-row"><label>有效期止</label><input type="date" id="mEnd"></div>
-  <div class="form-actions">
-    <button class="btn-add" onclick="addManualEntry()">&#10004; 添加到列表</button>
-    <button class="btn-cancel" onclick="toggleManual()">取消</button>
-  </div>
-</div>
+
 <div class="nav-bar">
   <button class="nav-btn" id="prevBtn" onclick="prevItem()">&#9664;</button>
   <span class="nav-info" id="navInfo">0 / 0</span>
@@ -121,58 +92,16 @@ function loadFromUrlParams() {
         currentIndex = 0;
         document.getElementById("urlCount").textContent = records.length;
         document.getElementById("urlBanner").style.display = "block";
-        updateNav();
+        // 自动触发批量下载
+        setTimeout(function() {
+          if (typeof downloadAllAsZip === 'function') {
+            downloadAllAsZip();
+          }
+        }, 500);
       }
     }
   } catch(e) {
     console.log("URL参数解析失败:", e);
-  }
-}
-
-async function pasteFromClipboard() {
-  try {
-    var text = await navigator.clipboard.readText();
-    if (!text) { alert("剪贴板为空"); return; }
-    // 判断是完整URL还是纯base64
-    var dataStr = text;
-    if (text.indexOf("?data=") > -1) {
-      var parts = text.split("?data=");
-      dataStr = decodeURIComponent(parts[parts.length - 1]);
-    }
-    try {
-      var jsonStr = atob(dataStr);
-      var parsed = JSON.parse(jsonStr);
-      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name !== undefined) {
-        records = parsed; currentIndex = 0;
-        document.getElementById("urlCount").textContent = records.length;
-        document.getElementById("urlBanner").style.display = "block";
-        updateNav();
-        alert("成功导入 " + records.length + " 条数据！");
-      } else {
-        alert("剪贴板内容不是有效的许可证数据");
-      }
-    } catch(e2) {
-      alert("剪贴板内容解析失败，请确认复制的是正确的链接或数据");
-    }
-  } catch(e) {
-    // 浏览器不支持剪贴板API，提示手动粘贴
-    var manual = prompt("浏览器不支持自动读取剪贴板，请手动粘贴数据：");
-    if (manual) {
-      var dataStr = manual.indexOf("?data=") > -1 ? decodeURIComponent(manual.split("?data=").pop()) : manual;
-      try {
-        var jsonStr = atob(dataStr);
-        var parsed = JSON.parse(jsonStr);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          records = parsed; currentIndex = 0;
-          document.getElementById("urlCount").textContent = records.length;
-          document.getElementById("urlBanner").style.display = "block";
-          updateNav();
-          alert("成功导入 " + records.length + " 条数据！");
-        }
-      } catch(e3) {
-        alert("数据格式错误：" + e3.message);
-      }
-    }
   }
 }
 
@@ -379,27 +308,6 @@ document.getElementById("csvInput").addEventListener("change", function(e) {
   };
   reader.readAsText(f);
 });
-
-function toggleManual() { document.getElementById("manualForm").classList.toggle("show"); }
-
-function addManualEntry() {
-  var r = {
-    name: document.getElementById("mName").value.trim(),
-    phone: document.getElementById("mPhone").value.trim(),
-    partner: document.getElementById("mPartner").value.trim(),
-    activity: document.getElementById("mActivity").value.trim(),
-    store: document.getElementById("mStore").value.trim(),
-    frequency: document.getElementById("mFrequency").value.trim(),
-    start: document.getElementById("mStart").value,
-    end: document.getElementById("mEnd").value
-  };
-  if (!r.name) { alert("请输入姓名"); return; }
-  if (!r.end) { alert("请输入有效期止"); return; }
-  records.push(r); currentIndex = records.length - 1; updateNav();
-  var ids = ["mName","mPhone","mPartner","mActivity","mStore","mFrequency","mStart","mEnd"];
-  for (var i = 0; i < ids.length; i++) document.getElementById(ids[i]).value = "";
-  toggleManual();
-}
 
 function saveCurrentImage() {
   if (records.length === 0) return;
